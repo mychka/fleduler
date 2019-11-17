@@ -1,9 +1,7 @@
 # [Kiko Backend task](https://docs.google.com/document/d/10QsOiK5v1EV89bBylBRyRPs4-AkMBZS4_h0iRgIojyA/edit?usp=sharing)
 
-## REST API
-
 <table>
-<tr><td colspan="2"></td></tr>
+<tr><td colspan="2"><h2>REST API</h2></td></tr>
 <tr>
     <td colspan="2"><b>Tenant</b></td>
 </tr>
