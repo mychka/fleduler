@@ -3,14 +3,15 @@
 ## REST API
 
 <table>
-<tr bgcolor="#a15702">
-    <td colspan="2" bgcolor="#a15702" ><font color="white"><b>Tenant</b></font></td>
+<tr><td colspan="2"></td></tr>
+<tr>
+    <td colspan="2"><b>Tenant</b></td>
 </tr>
-<tr valign="top" style="background-color: white">
-<td>
+<tr valign="top">
+<td rowspan="2">
 <code>GET /tenants</code><br>Retrieves a list of all tenants.
 </td>
-<td>
+<td rowspan="2">
 Response body:
 <pre>[
     {
@@ -21,6 +22,7 @@ Response body:
 ]</pre>
 </td>
 </tr>
+<tr></tr>
 <tr valign="top">
 <td>
 <code>POST /tenants</code><br>Creates a tenant.
@@ -36,14 +38,14 @@ Response body:<br>
 </tr>
 
 
-<tr style="background-color: #a15702; color: white">
+<tr>
     <td colspan="2"><b>Flat</b></td>
 </tr>
-<tr valign="top" style="background-color: white">
-<td>
+<tr valign="top">
+<td rowspan="2">
 <code>GET /flats</code><br>Retrieves a list of all flats.
 </td>
-<td>
+<td rowspan="2">
 Response body:
 <pre>[
     {
@@ -55,11 +57,12 @@ Response body:
 ]</pre>
 </td>
 </tr>
-<tr valign="top" style="background-color: white">
-<td>
+<tr></tr>
+<tr valign="top">
+<td rowspan="2">
 <code>GET /flats/{flatId}</code><br>Returns a flat with the specified ID.
 </td>
-<td>
+<td rowspan="2">
 Response body:
 <pre>{
         "id": number,
@@ -68,6 +71,7 @@ Response body:
 }</pre>
 </td>
 </tr>
+<tr></tr>
 <tr valign="top">
 <td>
 <code>POST /flats</code><br>Creates a flat.
@@ -84,14 +88,14 @@ Response body:<br>
 </tr>
 
 
-<tr style="background-color: #a15702; color: white">
+<tr>
     <td colspan="2"><b>Reservation</b></td>
 </tr>
 <tr valign="top">
-<td>
+<td rowspan="2">
 <code>GET /reservations?flatId={flatId}&from={from}&to={to}</code><br>Returns reservations that match the specified query criteria.
 </td>
-<td>
+<td rowspan="2">
 Response body:
 <pre>[
     {
@@ -105,11 +109,12 @@ Response body:
 ]</pre>
 </td>
 </tr>
-<tr valign="top" style="background-color: white">
-<td>
+<tr></tr>
+<tr valign="top">
+<td rowspan="2">
 <code>POST /reservations</code><br>Make a flat viewing reservation.
 </td>
-<td>
+<td rowspan="2">
 Request body:
 <pre>{
     "flatId": number,
@@ -120,11 +125,12 @@ Response body:<br>
 <code>number</code> - ID of a newly created reservation.
 </td>
 </tr>
+<tr></tr>
 <tr valign="top">
-<td>
+<td rowspan="2">
 <code>PUT /reservations/{reservationId}</code><br>Approves or rejects the specified reservation.
 </td>
-<td>
+<td rowspan="2">
 Request body:
 <pre>{
     "approved": boolean
@@ -132,7 +138,8 @@ Request body:
 Returns HTTP status code 204 "No Content"
 </td>
 </tr>
-<tr valign="top" style="background-color: white">
+<tr></tr>
+<tr valign="top">
 <td>
 <code>DELETE /reservations/{reservationId}</code><br>Deletes (cancels) reservation.
 </td>
