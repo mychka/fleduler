@@ -3,8 +3,8 @@
 ## REST API
 
 <table>
-<tr style="background-color: #a15702; color: white">
-    <td colspan="2"><b>Tenant</b></td>
+<tr bgcolor="#a15702">
+    <td colspan="2" bgcolor="#a15702" ><font color="white"><b>Tenant</b></font></td>
 </tr>
 <tr valign="top" style="background-color: white">
 <td>
