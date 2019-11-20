@@ -61,9 +61,10 @@ class FlatViewingSchedulerController(context: HandleContext) : Controller(contex
 
     @Mapping(value = "/reservations", method = POST)
     fun createReservation() {
+        println(bodyParams["dateTime"])
         val dateTime = LocalDateTime.parse(bodyParams["dateTime"] as String)
         require(dateTime in upcomingWeekRange())
-        require(dateTime.minute in 0..40 step 20 && dateTime.second == 0 && dateTime.nano == 0) // Check date format is correct
+        require(dateTime.hour in 10..19 && dateTime.minute in 0..40 step 20 && dateTime.second == 0 && dateTime.nano == 0) // Check date format is correct
         require(LocalDateTime.now().plusDays(1) < dateTime) // Current Tenant should be notified about reservation in at least 24 hours
 
         val flat = FlatDao.findById(
@@ -80,6 +81,7 @@ class FlatViewingSchedulerController(context: HandleContext) : Controller(contex
     fun approveOrRejectReservation() {
         val reservation = ReservationDao.findById(pathParams[0])!!
         val approved = bodyParams["approved"] as Boolean
+        require(reservation.approved != approved)
         ReservationDao.setApproved(reservation.id, approved)
         responseCode = 204
         notifyTenant(

@@ -17,7 +17,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class FlatViewingSchedulerServerTest {
+class FlatViewingSchedulerControllerTest {
 
     private val client = HttpClient.newBuilder().build()!!
 
@@ -39,6 +39,8 @@ class FlatViewingSchedulerServerTest {
     private lateinit var mon: LocalDate
     private lateinit var fri: LocalDate
     private lateinit var sun: LocalDate
+
+    private var currentReservationId: Long? = null
 
     /**
      * Put database into an initial state before every test method.
@@ -68,6 +70,8 @@ class FlatViewingSchedulerServerTest {
         reserv3 = ReservationDao.insert(downingFlat.id, weekRange.start.plusMinutes(20), annaLee.id)
         reserv4 = ReservationDao.insert(downingFlat.id, weekRange.endInclusive.minusDays(2), annaLee.id)
 
+        currentReservationId = null
+
         FlatViewingSchedulerController.ensureStarted()
     }
 
@@ -96,7 +100,7 @@ class FlatViewingSchedulerServerTest {
     )
 
     @Test
-    fun `post tenant`() {
+    fun `create tenant`() {
         assertEquals(
             "${louisArmstrong.id + 1}",
             sendPost("/tenants", """{"name": "Agatha Christie"}""").body()
@@ -125,7 +129,7 @@ class FlatViewingSchedulerServerTest {
     }
 
     @Test
-    fun `post flat`() {
+    fun `create flat`() {
         assertEquals(
             "${bakerFlat.id + 1}",
             sendPost("/flats", """{"address": "32 Windsor Gardens", "currentTenantId": ${johnDow.id}}""").body()
@@ -156,7 +160,7 @@ class FlatViewingSchedulerServerTest {
     }
 
     @Test
-    fun `post reservation`() {
+    fun `create reservation`() {
         assertEquals(
             200,
             sendPost(
@@ -172,7 +176,7 @@ class FlatViewingSchedulerServerTest {
     }
 
     @Test
-    fun `post reservations concurrently`() = runBlocking {
+    fun `create reservations concurrently`() = runBlocking {
         val count200 = AtomicInteger()
         val count400 = AtomicInteger()
 
@@ -192,7 +196,7 @@ class FlatViewingSchedulerServerTest {
     }
 
     @Test
-    fun `update reservation`() {
+    fun `approve or reject reservation`() {
         assertEquals(
             204,
             sendRequest(
@@ -218,7 +222,7 @@ class FlatViewingSchedulerServerTest {
     }
 
     @Test
-    fun `delete reservation`() {
+    fun `cancel reservation`() {
         assertEquals(
             204,
             sendRequest(
@@ -241,5 +245,199 @@ class FlatViewingSchedulerServerTest {
             "[]",
             sendGet("/reservations?flatId=${bakerFlat.id}&from=${mon}T10:00&to=${sun}T19:40").body()
         )
+    }
+
+    @Test
+    fun `check reservation datetime range and format`() {
+        // 2019-11-29T10:01
+        assertEquals(
+            400,
+            sendPost(
+                "/reservations",
+                """{"flatId": ${downingFlat.id}, "dateTime": "${weekRange.start.plusDays(4).plusMinutes(1)}", "prospectiveTenantId": ${louisArmstrong.id}}"""
+            ).statusCode()
+        )
+
+        // 2019-11-29T10:10
+        assertEquals(
+            400,
+            sendPost(
+                "/reservations",
+                """{"flatId": ${downingFlat.id}, "dateTime": "${weekRange.start.plusDays(4).plusMinutes(10)}", "prospectiveTenantId": ${louisArmstrong.id}}"""
+            ).statusCode()
+        )
+
+        // 2019-11-27T10:00:11
+        assertEquals(
+            400,
+            sendPost(
+                "/reservations",
+                """{"flatId": ${downingFlat.id}, "dateTime": "${weekRange.start.plusDays(2).plusSeconds(11)}", "prospectiveTenantId": ${louisArmstrong.id}}"""
+            ).statusCode()
+        )
+
+        // 2019-11-26T10:00:00.000000003
+        assertEquals(
+            400,
+            sendPost(
+                "/reservations",
+                """{"flatId": ${downingFlat.id}, "dateTime": "${weekRange.start.plusDays(1).plusNanos(3)}", "prospectiveTenantId": ${louisArmstrong.id}}"""
+            ).statusCode()
+        )
+
+        // 2019-11-25T09:40
+        assertEquals(
+            400,
+            sendPost(
+                "/reservations",
+                """{"flatId": ${downingFlat.id}, "dateTime": "${weekRange.start.minusMinutes(20)}", "prospectiveTenantId": ${louisArmstrong.id}}"""
+            ).statusCode()
+        )
+
+        // 2019-11-25T20:00
+        assertEquals(
+            400,
+            sendPost(
+                "/reservations",
+                """{"flatId": ${downingFlat.id}, "dateTime": "${weekRange.start.plusHours(10)}", "prospectiveTenantId": ${louisArmstrong.id}}"""
+            ).statusCode()
+        )
+
+        // 2019-12-01T20:00
+        assertEquals(
+            400,
+            sendPost(
+                "/reservations",
+                """{"flatId": ${downingFlat.id}, "dateTime": "${weekRange.endInclusive.plusMinutes(20)}", "prospectiveTenantId": ${louisArmstrong.id}}"""
+            ).statusCode()
+        )
+    }
+
+    fun reserve(expectSuccess: Boolean = true) = sendPost(
+        "/reservations",
+        """{"flatId": ${downingFlat.id}, "dateTime": "${weekRange.start.plusDays(4)}", "prospectiveTenantId": ${louisArmstrong.id}}"""
+    ).apply {
+        if (expectSuccess) {
+            assertEquals(200, statusCode())
+            currentReservationId = body().toLong()
+        } else {
+            assertEquals(400, statusCode())
+        }
+    }
+
+
+    fun cancel(expectSuccess: Boolean = true) = assertEquals(
+        if (expectSuccess) 204 else 400,
+        sendRequest(
+            "/reservations/${currentReservationId!!}", DELETE, ""
+        ).statusCode()
+    )
+
+    fun approve(expectSuccess: Boolean = true) = assertEquals(
+        if (expectSuccess) 204 else 400,
+        sendRequest(
+            "/reservations/${currentReservationId!!}",
+            PUT,
+            """{"approved": true}"""
+        ).statusCode()
+    )
+
+    fun reject(expectSuccess: Boolean = true) = assertEquals(
+        if (expectSuccess) 204 else 400,
+        sendRequest(
+            "/reservations/${currentReservationId!!}",
+            PUT,
+            """{"approved": false}"""
+        ).statusCode()
+    )
+
+    @Test
+    fun `reserve - reserve`() {
+        reserve()
+        reserve(false)
+    }
+
+    @Test
+    fun `reserve - cancel - reserve`() {
+        reserve()
+        cancel()
+        reserve()
+    }
+
+    @Test
+    fun `reserve - cancel - cancel`() {
+        reserve()
+        cancel()
+        cancel(false)
+    }
+
+    @Test
+    fun `reserve - cancel - approve`() {
+        reserve()
+        cancel()
+        approve(false)
+    }
+
+    @Test
+    fun `reserve - cancel - reject`() {
+        reserve()
+        cancel()
+        reject(false)
+    }
+
+    @Test
+    fun `reserve - approve - reserve`() {
+        reserve()
+        approve()
+        reserve(false)
+    }
+
+    @Test
+    fun `reserve - approve - cancel`() {
+        reserve()
+        approve()
+        cancel()
+    }
+
+    @Test
+    fun `reserve - approve - approve`() {
+        reserve()
+        approve()
+        approve(false)
+    }
+
+    @Test
+    fun `reserve - approve - reject`() {
+        reserve()
+        approve()
+        reject()
+    }
+
+    @Test
+    fun `reserve - reject - reserve`() {
+        reserve()
+        reject()
+        reserve(false)
+    }
+
+    @Test
+    fun `reserve - reject - cancel`() {
+        reserve()
+        reject()
+        cancel(false)
+    }
+
+    @Test
+    fun `reserve - reject - approve`() {
+        reserve()
+        reject()
+        approve()
+    }
+
+    @Test
+    fun `reserve - reject - reject`() {
+        reserve()
+        reject()
+        reject(false)
     }
 }
