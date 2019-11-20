@@ -13,6 +13,7 @@ repositories {
 
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
+    implementation(kotlin("reflect"))
     testImplementation(kotlin("test-testng"))
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.2")
 }

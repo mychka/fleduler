@@ -68,7 +68,7 @@ class FlatViewingSchedulerServerTest {
         reserv3 = ReservationDao.insert(downingFlat.id, weekRange.start.plusMinutes(20), annaLee.id)
         reserv4 = ReservationDao.insert(downingFlat.id, weekRange.endInclusive.minusDays(2), annaLee.id)
 
-        FlatViewingSchedulerServer.ensureStarted()
+        FlatViewingSchedulerController.ensureStarted()
     }
 
     private fun sendGet(path: String) = sendRequest(path, GET, "")

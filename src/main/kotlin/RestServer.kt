@@ -1,11 +1,22 @@
 package com.kiko.flatviewingscheduler
 
 import com.sun.net.httpserver.HttpServer
+import java.lang.reflect.InvocationTargetException
 import java.net.InetSocketAddress
 import java.net.URLDecoder
 import javax.script.*
+import kotlin.reflect.KClass
+import kotlin.reflect.full.findAnnotation
+import kotlin.reflect.full.primaryConstructor
 
-private typealias Handler = (context: HandleContext) -> Unit
+enum class Method {
+    GET, POST, PUT, DELETE
+}
+
+@Target(AnnotationTarget.FUNCTION)
+@Retention
+annotation class Mapping(val value: String, val method: Method = Method.GET) {
+}
 
 class HandleContext(val pathParams: List<Long>, val queryParams: Map<String, String>, val bodyParams: Map<String, *>) {
 
@@ -13,29 +24,53 @@ class HandleContext(val pathParams: List<Long>, val queryParams: Map<String, Str
 
     private val sb = StringBuilder()
 
-    fun append(any: Any): HandleContext {
-        sb.append(any)
-        return this
-    }
+    fun append(any: Any): HandleContext = apply { sb.append(any) }
 
     fun getBytes() = sb.toString().toByteArray()
 }
 
-private class RestContext(val path: Regex, val method: Method, val handler: Handler)
+private class RestMapping(val path: Regex, val method: Method, val handler: (HandleContext) -> Unit)
 
-enum class Method {
-    GET, POST, PUT, DELETE
+open class Controller(private val context: HandleContext) {
+
+    val bodyParams: Map<String, *>
+        get() = context.bodyParams
+
+    val pathParams: List<Long>
+        get() = context.pathParams
+
+    val queryParams: Map<String, String>
+        get() = context.queryParams
+
+    var responseCode: Int
+        get() = context.responseCode
+        set(value) {
+            context.responseCode = value
+        }
+
+    fun append(any: Any): Controller = apply { context.append(any) }
 }
 
 object RestServer {
 
     const val PORT = 8081
 
-    private val contexts = mutableListOf<RestContext>()
+    private val contexts = mutableListOf<RestMapping>()
 
-    fun registerContext(path: String, method: Method, handler: Handler): RestServer {
-        contexts += RestContext(path.toRegex(), method, handler)
-        return this
+    fun registerController(clazz: KClass<out Controller>) = apply {
+        contexts += clazz.members.mapNotNull { callable ->
+            callable.findAnnotation<Mapping>()?.run {
+                RestMapping(value.toRegex(), method) {
+                    try {
+                        callable.call(
+                            clazz.primaryConstructor!!.call(it)
+                        )
+                    } catch (e: InvocationTargetException) {
+                        throw e.targetException
+                    }
+                }
+            }
+        }
     }
 
     fun start() {
